@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+         http://www.springframework.org/schema/beans https://www.springframework.org/schema/beans/spring-beans.xsd
+         http://www.springframework.org/schema/context https://www.springframework.org/schema/context/spring-context.xsd
+         http://www.springframework.org/schema/tx https://www.springframework.org/schema/tx/spring-tx.xsd
+         http://www.springframework.org/schema/data/jpa https://www.springframework.org/schema/data/jpa/spring-jpa.xsd">
+
+    <!-- component-scan for services & controllers (controllers can be scanned in dispatcher-servlet too) -->
+    <context:component-scan base-package="com.smart"/>
+
+    <!-- DataSource: adapter to PostgreSQL (adapt user/password/dbname) -->
+    <bean id="dataSource" class="org.apache.commons.dbcp2.BasicDataSource" destroy-method="close">
+        <property name="driverClassName" value="org.postgresql.Driver"/>
+        <property name="url" value="jdbc:postgresql://localhost:5432/smart_test"/>
+        <property name="username" value="postgres"/>
+        <property name="password" value="ycode"/>
+        <property name="initialSize" value="2"/>
+        <property name="maxTotal" value="10"/>
+    </bean>
+
+    <!-- JPA EntityManagerFactory -->
+    <bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="packagesToScan" value="com.smart.entity"/>
+        <property name="jpaVendorAdapter">
+            <bean class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter">
+                <property name="generateDdl" value="true"/>
+                <property name="showSql" value="true"/>
+            </bean>
+        </property>
+        <property name="jpaProperties">
+            <props>
+                <prop key="hibernate.dialect">org.hibernate.dialect.PostgreSQLDialect</prop>
+                <prop key="hibernate.hbm2ddl.auto">update</prop>
+            </props>
+        </property>
+    </bean>
+
+    <!-- Transaction manager -->
+    <bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+        <property name="entityManagerFactory" ref="entityManagerFactory"/>
+    </bean>
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+
+    <!-- Enable Spring Data JPA repositories -->
+    <jpa:repositories base-package="com.smart.repository" entity-manager-factory-ref="entityManagerFactory"/>
+
+    <!-- Example of a prototype scoped bean (helper) -->
+    <bean id="idGenerator" class="com.smart.util.IdGenerator" scope="prototype"/>
+
+    <!-- Declaring services as beans in XML (alternatively rely on @Service and component-scan) -->
+    <bean id="livreurService" class="com.smart.service.LivreurServiceImpl">
+        <!-- constructor injection example (injection 1) -->
+        <constructor-arg ref="livreurRepository"/>
+    </bean>
+
+    <bean id="colisService" class="com.smart.service.ColisServiceImpl">
+        <!-- setter injection example (injection 2) -->
+        <property name="colisRepository" ref="colisRepository"/>
+        <!-- demonstrate injecting livreurService via property -->
+        <property name="livreurService" ref="livreurService"/>
+    </bean>
+
+    <!-- showcase autowire byName (field-like) for a helper service -->
+    <bean id="reportService" class="com.smart.service.ReportService" autowire="byName"/>
+
+    <!-- Repositories are created by Spring Data JPA (no need to declare beans) -->
+</beans>

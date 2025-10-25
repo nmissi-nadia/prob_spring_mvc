@@ -4,54 +4,38 @@ import com.smart.entity.Colis;
 import com.smart.entity.Livreur;
 import com.smart.service.ColisService;
 import com.smart.service.LivreurService;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+import java.util.List;
 
 public class App {
     public static void main(String[] args) {
-        @SuppressWarnings("resource")
-        ApplicationContext context =
-                new ClassPathXmlApplicationContext("WEB-INF/applicationContext.xml");
+        try (var ctx = new ClassPathXmlApplicationContext("applicationContext.xml")) {
+            LivreurService livreurService = ctx.getBean("livreurService", LivreurService.class);
+            ColisService colisService = ctx.getBean("colisService", ColisService.class);
 
-        LivreurService livreurService = context.getBean("livreurService", LivreurService.class);
-        ColisService colisService = context.getBean("colisService", ColisService.class);
+            // Create livreurs
+            Livreur l1 = new Livreur("El", "Amin", "Moto", "060000001");
+            Livreur l2 = new Livreur("Saad", "Omar", "Voiture", "060000002");
+            l1 = livreurService.create(l1);
+            l2 = livreurService.create(l2);
+            System.out.println("Livreurs: " + livreurService.findAll());
 
-        // ================== TEST LIVREUR ==================
-        Livreur livreur1 = new Livreur();
-        livreur1.setNom("oum");
-        livreur1.setPrenom("imane");
-        livreur1.setVehicule("Moto");
-        livreur1.setTelephone("0429474794");
+            // Create colis and assign
+            Colis c1 = new Colis("Youssef", "Rabat, rue A", 2.5, Colis.Statut.PREPARATION);
+            Colis saved = colisService.create(c1, l1.getId());
+            System.out.println("Colis créé: " + saved);
 
-        // Sauvegarde du livreur
-        livreurService.saveLivreur(livreur1);
-        System.out.println("Livreur ajouté avec succès !");
+            // Change statut
+            colisService.changeStatut(saved.getId(), Colis.Statut.EN_TRANSIT);
+            System.out.println("Après statut: " + colisService.findById(saved.getId()).get());
 
-        // ================== TEST COLIS ==================
-        Colis colis1 = new Colis();
-        colis1.setDestinataire("Karima El Amrani");
-        colis1.setAdresse("settat, Maarif");
-        colis1.setPoids(2.5);
-        colis1.setStatut("Préparation");
-        colis1.setLivreur(livreur1);
+            // List colis for livreur
+            List<Colis> colisLivreur = colisService.findByLivreur(l1);
+            System.out.println("Colis pour livreur " + l1.getId() + " : " + colisLivreur);
 
-        System.out.println(colis1);
-
-        // Sauvegarde du colis
-        colisService.saveColis(colis1);
-        System.out.println("Colis ajouté avec succès !");
-
-        // ================== LISTER LES COLIS ==================
-        System.out.println("Liste des colis :");
-        colisService.getAllColis().forEach(System.out::println);
-
-        // ================== MISE À JOUR STATUT ==================
-        colis1.setStatut("Livré");
-        colisService.saveColis(colis1);
-        System.out.println("Statut du colis mis à jour !");
-
-        // ================== SUPPRESSION ==================
-        //colisService.deleteColis(colis1.getId());
-        //System.out.println("Colis supprimé !");
+            // cleanup
+            // livreurService.delete(l2.getId());
+        }
     }
 }
